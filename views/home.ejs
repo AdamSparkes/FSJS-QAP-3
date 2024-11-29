@@ -1,0 +1,25 @@
+<%- include('partials/header', { title: "Welcome" }) %>
+
+<h1>Welcome, <%= user.username %>!</h1>
+
+<!-- Show admin-specific content -->
+<% if (users) { %>
+    <h2>All Registered Users:</h2>
+    <ul>
+        <% users.forEach(user => { %>
+            <li>
+                <strong><%= user.username %></strong> (<%= user.email %>) - Role: <%= user.role %>
+            </li>
+        <% }); %>
+    </ul>
+<% } else { %>
+    <!-- Regular user dashboard -->
+    <p>This is your personal dashboard.</p>
+<% } %>
+
+<!-- Logout button -->
+<form action="/logout" method="GET">
+    <button type="submit">Logout</button>
+</form>
+
+<%- include('partials/footer') %>

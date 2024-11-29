@@ -39,6 +39,15 @@ const USERS = [
     },
 ];
 
+
+// Middleware to check if a user is authenticated
+function ensureAuthenticated(req, res, next) {
+    if (!req.session.user) {
+        return res.redirect("/login");
+    }
+    next();
+}
+
 // GET /login - Render login form
 app.get("/login", (request, response) => {
     response.render("login");
