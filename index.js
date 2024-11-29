@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 
 const app = express();
 const PORT = 3000;
@@ -25,9 +25,7 @@ const USERS = [
         id: 1,
         username: "AdminUser",
         email: "admin@example.com",
-        password: bcrypt.hashSync("admin123", SALT_ROUNDS), //In a database, you'd just store the hashes, but for 
-                                                            // our purposes we'll hash these existing users when the 
-                                                            // app loads
+        password: bcrypt.hashSync("admin123", SALT_ROUNDS),
         role: "admin",
     },
     {
@@ -35,10 +33,9 @@ const USERS = [
         username: "RegularUser",
         email: "user@example.com",
         password: bcrypt.hashSync("user123", SALT_ROUNDS),
-        role: "user", // Regular user
+        role: "user",
     },
 ];
-
 
 // Middleware to check if a user is authenticated
 function ensureAuthenticated(req, res, next) {
@@ -49,75 +46,91 @@ function ensureAuthenticated(req, res, next) {
 }
 
 // GET /login - Render login form
-app.get("/login", (request, response) => {
-    response.render("login");
+app.get("/login", (req, res) => {
+    res.render("login");
 });
 
-// POST /login - Allows a user to login
-app.post("/login", (request, response) => {
-    const { email, password } = request.body;
+// POST /login - Authenticate user
+app.post("/login", (req, res) => {
+    const { email, password } = req.body;
+    console.log("Login attempt for:", email);
 
-    // Find user by email
     const user = USERS.find(user => user.email === email);
     if (!user) {
-        return response.render("login", { error: "Invalid email or password!" });
+        console.log("User not found");
+        return res.render("login", { error: "Invalid email or password!" });
     }
 
-    // Compare hashed password
     const isPasswordValid = bcrypt.compareSync(password, user.password);
+    console.log("Password validation result:", isPasswordValid);
+
     if (!isPasswordValid) {
-        return response.render("login", { error: "Invalid email or password!" });
+        return res.render("login", { error: "Invalid email or password!" });
     }
 
-    // Set user session
-    request.session.user = { id: user.id, username: user.username, role: user.role };
-    console.log("User logged in:", request.session.user);
+    req.session.user = { id: user.id, username: user.username, role: user.role };
+    console.log("User session set:", req.session.user);
 
-    response.redirect("/landing");
+    req.session.save(err => {
+        if (err) {
+            console.error("Session save error:", err);
+        }
+        res.redirect("/landing");
+    });
 });
-
 // GET /signup - Render signup form
-app.get("/signup", (request, response) => {
-    response.render("signup");
+app.get("/signup", (req, res) => {
+    res.render("signup");
 });
 
-// POST /signup - Allows a user to signup
-app.post("/signup", (request, response) => {
-    const { email, username, password } = request.body;
+// POST /signup - Register a new user
+app.post("/signup", (req, res) => {
+    const { email, username, password } = req.body;
 
-    // Check if email or username already exists
     const existingUser = USERS.find(user => user.email === email || user.username === username);
     if (existingUser) {
-        return response.render("signup", { error: "Email or username already exists!" });
+        return res.render("signup", { error: "Email or username already exists!" });
     }
 
-    // Hash password and create new user
     const hashedPassword = bcrypt.hashSync(password, SALT_ROUNDS);
-    const newUser = {
-        id: USERS.length + 1, // Simple incremental ID
+    USERS.push({
+        id: USERS.length + 1,
         username,
         email,
         password: hashedPassword,
-        role: "user", // Default to regular user
-    };
+        role: "user",
+    });
 
-    USERS.push(newUser);
-    console.log("New user registered:", newUser);
-
-    response.redirect("/login");
+    res.redirect("/login");
 });
 
 // GET / - Render index page or redirect to landing if logged in
-app.get("/", (request, response) => {
-    if (request.session.user) {
-        return response.redirect("/landing");
+app.get("/", (req, res) => {
+    if (req.session.user) {
+        return res.redirect("/landing");
     }
-    response.render("index");
+    res.render("index");
 });
 
-// GET /landing - Shows a welcome page for users, shows the names of all users if an admin
-app.get("/landing", (request, response) => {
-    
+// GET /landing - Render landing (home) page
+app.get("/landing", ensureAuthenticated, (req, res) => {
+    const user = req.session.user;
+
+    if (user.role === "admin") {
+        return res.render("home", { user, users: USERS });
+    }
+
+    res.render("home", { user, users: null });
+});
+
+// GET /logout - Log out the user
+app.get("/logout", (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            console.error("Error destroying session:", err);
+        }
+        res.redirect("/");
+    });
 });
 
 // Start server

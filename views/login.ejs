@@ -1,5 +1,15 @@
+
+
 <%- include('partials/header', { title: "Login" }) %>
     <h1>Login</h1>
+
+    <!-- Display error message if it exists -->
+    <% if (typeof error !== 'undefined') { %>
+        <div class="error-message">
+            <p><%= error %></p>
+        </div>
+    <% } %>
+
     <form action="/login" method="POST">
         <div class="form-input-container">
             <label for="email">Email:</label>
